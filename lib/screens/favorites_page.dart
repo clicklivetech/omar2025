@@ -14,7 +14,6 @@ class _FavoritesPageState extends State<FavoritesPage>
     with WidgetsBindingObserver, RouteAware {
   bool _isLoading = true;
   List<Product> _favorites = [];
-  int _cartItemsCount = 0;
   final _routeObserver = RouteObserver<PageRoute>();
 
   @override
@@ -51,20 +50,6 @@ class _FavoritesPageState extends State<FavoritesPage>
 
   Future<void> _loadData() async {
     _loadFavorites();
-    _loadCartCount();
-  }
-
-  Future<void> _loadCartCount() async {
-    try {
-      final count = await LocalStorageService.getCartItemsCount();
-      if (mounted) {
-        setState(() {
-          _cartItemsCount = count;
-        });
-      }
-    } catch (e) {
-      // Handle error silently
-    }
   }
 
   Future<void> _loadFavorites() async {
@@ -109,7 +94,6 @@ class _FavoritesPageState extends State<FavoritesPage>
   Future<void> _addToCart(Product product) async {
     try {
       await LocalStorageService.addToCart(product, product.cartQuantity ?? 1);
-      await _loadCartCount();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('تم إضافة المنتج إلى السلة')),
@@ -146,13 +130,16 @@ class _FavoritesPageState extends State<FavoritesPage>
     if (confirmed == true && mounted) {
       try {
         await LocalStorageService.clearFavorites();
+        if (!mounted) return;
         setState(() {
           _favorites.clear();
         });
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('تم مسح المفضلة')),
         );
       } catch (e) {
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('حدث خطأ أثناء مسح المفضلة')),
         );
@@ -162,7 +149,6 @@ class _FavoritesPageState extends State<FavoritesPage>
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Theme.of(context).primaryColor,

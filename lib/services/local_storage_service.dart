@@ -30,8 +30,8 @@ class LocalStorageService {
     final existingItemIndex = cart.indexWhere((item) => item.product.id == product.id);
     
     if (existingItemIndex != -1) {
-      // Update existing item quantity
-      cart[existingItemIndex].quantity += quantity;
+      // Replace existing item quantity instead of adding to it
+      cart[existingItemIndex].quantity = quantity;
     } else {
       // Add new item with specified quantity
       cart.add(LocalCartItem(product: product, quantity: quantity));

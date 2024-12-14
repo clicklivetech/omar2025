@@ -100,111 +100,232 @@ class _ProductCardState extends State<ProductCard> {
     final isSmallScreen = screenWidth < 360;
     final isMediumScreen = screenWidth < 600;
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final cardWidth = constraints.maxWidth;
-        final imageSize = cardWidth;
-        final titleFontSize = isSmallScreen ? 11.0 : isMediumScreen ? 13.0 : 16.0;
-        final priceFontSize = isSmallScreen ? 13.0 : isMediumScreen ? 15.0 : 18.0;
-        final iconSize = isSmallScreen ? 16.0 : 20.0;
-        final buttonHeight = isSmallScreen ? 28.0 : 36.0;
-        final contentPadding = isSmallScreen ? 4.0 : 8.0;
+    // Adjusted sizes for small screens
+    final titleFontSize = isSmallScreen ? 10.0 : isMediumScreen ? 12.0 : 14.0;
+    final priceFontSize = isSmallScreen ? 11.0 : isMediumScreen ? 13.0 : 15.0;
+    final iconSize = isSmallScreen ? 14.0 : 18.0;
+    final buttonHeight = isSmallScreen ? 24.0 : 32.0;
+    final contentPadding = isSmallScreen ? 4.0 : 6.0;
+    final discountFontSize = isSmallScreen ? 8.0 : 10.0;
 
-        return Card(
-          elevation: 2,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              AspectRatio(
-                aspectRatio: 1,
-                child: ClipRRect(
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(12),
-                  ),
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      widget.product.imageUrl != null
-                          ? Image.network(
-                              widget.product.imageUrl!,
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) {
-                                debugPrint('Error loading image: ${widget.product.imageUrl}');
-                                debugPrint('Error details: $error');
-                                return Container(
-                                  color: Colors.grey[100],
-                                  child: Icon(
-                                    Icons.image_not_supported,
-                                    size: imageSize * 0.3,
-                                    color: Colors.grey,
-                                  ),
-                                );
-                              },
-                            )
-                          : Container(
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Image section with discount badge and favorite button
+          AspectRatio(
+            aspectRatio: isSmallScreen ? 1 : 1.2,
+            child: ClipRRect(
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  // Product Image
+                  widget.product.imageUrl != null
+                      ? Image.network(
+                          widget.product.imageUrl!,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Container(
                               color: Colors.grey[100],
                               child: Icon(
                                 Icons.image_not_supported,
-                                size: imageSize * 0.3,
+                                size: iconSize * 2,
                                 color: Colors.grey,
                               ),
-                            ),
+                            );
+                          },
+                        )
+                      : Container(
+                          color: Colors.grey[100],
+                          child: Icon(
+                            Icons.image_not_supported,
+                            size: iconSize * 2,
+                            color: Colors.grey,
+                          ),
+                        ),
+                  
+                  // Discount Badge
+                  if (widget.product.discountPrice != null)
+                    Positioned(
+                      top: 4,
+                      left: 4,
+                      child: Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: contentPadding,
+                          vertical: contentPadding / 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.red[600],
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          '${(((widget.product.price - widget.product.discountPrice!) / widget.product.price) * 100).round()}% خصم',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: discountFontSize,
+                          ),
+                        ),
+                      ),
+                    ),
+                  
+                  // Favorite Button
+                  if (widget.showFavoriteButton)
+                    Positioned(
+                      top: 4,
+                      right: 4,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.9),
+                          shape: BoxShape.circle,
+                        ),
+                        child: IconButton(
+                          icon: Icon(
+                            widget.isFavorite ? Icons.favorite : Icons.favorite_border,
+                            color: widget.isFavorite ? Colors.red : Colors.grey[600],
+                            size: iconSize,
+                          ),
+                          onPressed: widget.onFavoritePressed,
+                          constraints: BoxConstraints(
+                            minWidth: buttonHeight,
+                            minHeight: buttonHeight,
+                          ),
+                          padding: EdgeInsets.zero,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+          
+          // Product Details
+          Expanded(
+            child: Padding(
+              padding: EdgeInsets.all(contentPadding),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Product Name and Unit
+                  Text(
+                    widget.product.name,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      fontSize: titleFontSize,
+                      height: 1.2,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.end,
+                  ),
+                  if (widget.product.unit != null)
+                    Text(
+                      'الوحدة: ${widget.product.unit}',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: Colors.grey[600],
+                        fontSize: titleFontSize - 2,
+                      ),
+                      textAlign: TextAlign.end,
+                    ),
+                  
+                  const Spacer(),
+                  
+                  // Price Section
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                       if (widget.product.discountPrice != null)
-                        Positioned(
-                          top: 4,
-                          left: 4,
-                          child: Container(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: isSmallScreen ? 4 : 8,
-                              vertical: isSmallScreen ? 2 : 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.red[600],
-                              borderRadius: BorderRadius.circular(16),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.1),
-                                  blurRadius: 4,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                            child: Text(
-                              '${(((widget.product.price - widget.product.discountPrice!) / widget.product.price) * 100).round()}% خصم',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: isSmallScreen ? 9 : 11,
+                        Text(
+                          '${widget.product.price.toStringAsFixed(2)} ريال',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            decoration: TextDecoration.lineThrough,
+                            color: Colors.grey[600],
+                            fontSize: titleFontSize - 2,
+                          ),
+                        ),
+                      Text(
+                        '${(widget.product.discountPrice ?? widget.product.price).toStringAsFixed(2)} ريال',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: theme.primaryColor,
+                          fontSize: priceFontSize,
+                        ),
+                      ),
+                    ],
+                  ),
+                  
+                  // Add to Cart Section
+                  if (widget.showAddToCartButton)
+                    Padding(
+                      padding: EdgeInsets.only(top: contentPadding),
+                      child: Row(
+                        children: [
+                          // Quantity Selector
+                          Expanded(
+                            child: Container(
+                              height: buttonHeight,
+                              decoration: BoxDecoration(
+                                color: Colors.grey[100],
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                children: [
+                                  _buildQuantityButton(
+                                    icon: Icons.remove_rounded,
+                                    onPressed: _quantity > 1
+                                        ? () {
+                                            setState(() {
+                                              _quantity--;
+                                              widget.onQuantityChanged(_quantity);
+                                            });
+                                          }
+                                        : null,
+                                    iconSize: iconSize,
+                                    buttonHeight: buttonHeight,
+                                  ),
+                                  Text(
+                                    _quantity.toString(),
+                                    style: TextStyle(
+                                      fontSize: titleFontSize,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  _buildQuantityButton(
+                                    icon: Icons.add_rounded,
+                                    onPressed: () {
+                                      setState(() {
+                                        _quantity++;
+                                        widget.onQuantityChanged(_quantity);
+                                      });
+                                    },
+                                    iconSize: iconSize,
+                                    buttonHeight: buttonHeight,
+                                  ),
+                                ],
                               ),
                             ),
                           ),
-                        ),
-                      if (widget.showFavoriteButton)
-                        Positioned(
-                          top: 4,
-                          right: 4,
-                          child: Container(
+                          SizedBox(width: contentPadding),
+                          // Add to Cart Button
+                          Container(
+                            height: buttonHeight,
                             decoration: BoxDecoration(
-                              color: Colors.white,
-                              shape: BoxShape.circle,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.1),
-                                  blurRadius: 4,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
+                              color: theme.primaryColor,
+                              borderRadius: BorderRadius.circular(6),
                             ),
                             child: IconButton(
                               icon: Icon(
-                                widget.isFavorite ? Icons.favorite : Icons.favorite_border,
-                                color: widget.isFavorite ? Colors.red : Colors.grey[600],
+                                Icons.shopping_cart_outlined,
                                 size: iconSize,
+                                color: Colors.white,
                               ),
-                              onPressed: widget.onFavoritePressed,
+                              onPressed: _addToCart,
                               constraints: BoxConstraints(
                                 minWidth: buttonHeight,
                                 minHeight: buttonHeight,
@@ -212,198 +333,36 @@ class _ProductCardState extends State<ProductCard> {
                               padding: EdgeInsets.zero,
                             ),
                           ),
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-              Expanded(
-                child: Padding(
-                  padding: EdgeInsets.all(contentPadding),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      // Top row: Name and Unit
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            flex: 3,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                Text(
-                                  widget.product.name,
-                                  style: theme.textTheme.titleMedium?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: titleFontSize,
-                                    height: 1.2,
-                                  ),
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  textAlign: TextAlign.end,
-                                ),
-                                if (widget.product.unit != null)
-                                  Padding(
-                                    padding: EdgeInsets.only(top: contentPadding / 2),
-                                    child: Text(
-                                      'الوحدة: ${widget.product.unit}',
-                                      style: theme.textTheme.bodySmall?.copyWith(
-                                        color: Colors.grey[600],
-                                        fontSize: isSmallScreen ? 9 : 11,
-                                      ),
-                                      textAlign: TextAlign.end,
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          ),
                         ],
                       ),
-                      // Price and discount
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            flex: 2,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                if (widget.product.discountPrice != null)
-                                  Text(
-                                    '${widget.product.price.toStringAsFixed(2)} ريال',
-                                    style: theme.textTheme.bodySmall?.copyWith(
-                                      decoration: TextDecoration.lineThrough,
-                                      color: Colors.grey[600],
-                                      fontSize: isSmallScreen ? 9 : 11,
-                                    ),
-                                  ),
-                                Text(
-                                  '${(widget.product.discountPrice ?? widget.product.price).toStringAsFixed(2)} ريال',
-                                  style: theme.textTheme.titleMedium?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                    color: theme.primaryColor,
-                                    fontSize: priceFontSize,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                      const Spacer(),
-                      // Bottom section: Quantity selector and buy button
-                      if (widget.showAddToCartButton)
-                        Container(
-                          decoration: BoxDecoration(
-                            color: Colors.grey[50],
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: Colors.grey[200]!,
-                              width: 1,
-                            ),
-                          ),
-                          padding: EdgeInsets.all(contentPadding / 2),
-                          child: Row(
-                            children: [
-                              // Buy button
-                              Container(
-                                decoration: BoxDecoration(
-                                  color: theme.primaryColor,
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: IconButton(
-                                  icon: Icon(
-                                    Icons.shopping_cart_outlined,
-                                    size: iconSize,
-                                    color: Colors.white,
-                                  ),
-                                  onPressed: _addToCart,
-                                  constraints: BoxConstraints(
-                                    minWidth: buttonHeight,
-                                    minHeight: buttonHeight,
-                                  ),
-                                  padding: EdgeInsets.zero,
-                                ),
-                              ),
-                              SizedBox(width: contentPadding),
-                              // Quantity selector
-                              Expanded(
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    color: Colors.grey[100],
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                                    children: [
-                                      IconButton(
-                                        icon: Icon(
-                                          Icons.remove_rounded,
-                                          size: iconSize,
-                                          color: _quantity > 1 ? Colors.grey[700] : Colors.grey[400],
-                                        ),
-                                        onPressed: () {
-                                          if (_quantity > 1) {
-                                            setState(() {
-                                              _quantity--;
-                                              widget.onQuantityChanged(_quantity);
-                                            });
-                                          }
-                                        },
-                                        constraints: BoxConstraints(
-                                          minWidth: buttonHeight,
-                                          minHeight: buttonHeight,
-                                        ),
-                                        padding: EdgeInsets.zero,
-                                      ),
-                                      Container(
-                                        constraints: BoxConstraints(
-                                          minWidth: isSmallScreen ? 24 : 32,
-                                        ),
-                                        child: Text(
-                                          _quantity.toString(),
-                                          textAlign: TextAlign.center,
-                                          style: TextStyle(
-                                            fontSize: isSmallScreen ? 11 : 13,
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.grey[800],
-                                          ),
-                                        ),
-                                      ),
-                                      IconButton(
-                                        icon: Icon(
-                                          Icons.add_rounded,
-                                          size: iconSize,
-                                          color: Colors.grey[700],
-                                        ),
-                                        onPressed: () {
-                                          setState(() {
-                                            _quantity++;
-                                            widget.onQuantityChanged(_quantity);
-                                          });
-                                        },
-                                        constraints: BoxConstraints(
-                                          minWidth: buttonHeight,
-                                          minHeight: buttonHeight,
-                                        ),
-                                        padding: EdgeInsets.zero,
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
+                    ),
+                ],
               ),
-            ],
+            ),
           ),
-        );
-      },
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuantityButton({
+    required IconData icon,
+    required VoidCallback? onPressed,
+    required double iconSize,
+    required double buttonHeight,
+  }) {
+    return SizedBox(
+      width: buttonHeight,
+      height: buttonHeight,
+      child: IconButton(
+        icon: Icon(
+          icon,
+          size: iconSize,
+          color: onPressed != null ? Colors.grey[700] : Colors.grey[400],
+        ),
+        onPressed: onPressed,
+        padding: EdgeInsets.zero,
+      ),
     );
   }
 }
