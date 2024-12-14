@@ -164,83 +164,21 @@ class _FavoritesPageState extends State<FavoritesPage>
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Theme.of(context).primaryColor,
+        elevation: 0,
+        title: const Text('المفضلة'),
+        actions: [
+          if (_favorites.isNotEmpty)
+            IconButton(
+              icon: const Icon(Icons.delete_outline),
+              color: Colors.white,
+              onPressed: () => _showClearFavoritesDialog(context),
+            ),
+        ],
+      ),
       body: Column(
         children: [
-          // Custom top bar
-          Container(
-            padding: EdgeInsets.only(
-              top: MediaQuery.of(context).padding.top + 8,
-              bottom: 8,
-              left: 8,
-              right: 8,
-            ),
-            decoration: BoxDecoration(
-              color: theme.primaryColor,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 4,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
-                const SizedBox(width: 48), // Balance for the right side
-                const Expanded(
-                  child: Text(
-                    'المفضلة',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-                Stack(
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.shopping_cart),
-                      color: Colors.white,
-                      onPressed: () =>
-                          Navigator.pushNamed(context, '/cart').then((_) => _loadData()),
-                    ),
-                    if (_cartItemsCount > 0)
-                      Positioned(
-                        right: 0,
-                        top: 0,
-                        child: Container(
-                          padding: const EdgeInsets.all(2),
-                          decoration: BoxDecoration(
-                            color: Colors.red,
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          constraints: const BoxConstraints(
-                            minWidth: 20,
-                            minHeight: 20,
-                          ),
-                          child: Text(
-                            '$_cartItemsCount',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 12,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-                if (_favorites.isNotEmpty)
-                  IconButton(
-                    icon: const Icon(Icons.delete_outline),
-                    color: Colors.white,
-                    onPressed: () => _showClearFavoritesDialog(context),
-                  ),
-              ],
-            ),
-          ),
           // Content
           Expanded(
             child: _isLoading
