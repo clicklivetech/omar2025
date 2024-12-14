@@ -40,12 +40,12 @@ class CustomBottomNav extends StatelessWidget {
           fontSize: 12,
         ),
         items: [
-          BottomNavigationBarItem(
+          const BottomNavigationBarItem(
             icon: Icon(Icons.home_outlined),
             activeIcon: Icon(Icons.home),
             label: 'الرئيسية',
           ),
-          BottomNavigationBarItem(
+          const BottomNavigationBarItem(
             icon: Icon(Icons.category_outlined),
             activeIcon: Icon(Icons.category),
             label: 'الأقسام',
@@ -111,12 +111,12 @@ class CustomBottomNav extends StatelessWidget {
             ),
             label: 'السلة',
           ),
-          BottomNavigationBarItem(
+          const BottomNavigationBarItem(
             icon: Icon(Icons.favorite_outline),
             activeIcon: Icon(Icons.favorite),
             label: 'المفضلة',
           ),
-          BottomNavigationBarItem(
+          const BottomNavigationBarItem(
             icon: Icon(Icons.person_outline),
             activeIcon: Icon(Icons.person),
             label: 'حسابي',

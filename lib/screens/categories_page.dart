@@ -100,9 +100,9 @@ class _CategoriesPageState extends State<CategoriesPage> {
             child: Column(
               children: [
                 // Top row with title and actions
-                Row(
+                const Row(
                   mainAxisAlignment: MainAxisAlignment.center,
-                  children: const [
+                  children: [
                     Expanded(
                       child: Text(
                         'الأقسام',

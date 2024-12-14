@@ -223,37 +223,10 @@ class _ProductCardState extends State<ProductCard> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      // Top row: Name and Price
+                      // Top row: Name and Unit
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Price on the left
-                          Expanded(
-                            flex: 2,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                if (widget.product.discountPrice != null)
-                                  Text(
-                                    '${widget.product.price.toStringAsFixed(2)} ريال',
-                                    style: theme.textTheme.bodySmall?.copyWith(
-                                      decoration: TextDecoration.lineThrough,
-                                      color: Colors.grey[600],
-                                      fontSize: isSmallScreen ? 9 : 11,
-                                    ),
-                                  ),
-                                Text(
-                                  '${(widget.product.discountPrice ?? widget.product.price).toStringAsFixed(2)} ريال',
-                                  style: theme.textTheme.titleMedium?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                    color: theme.primaryColor,
-                                    fontSize: priceFontSize,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          // Name on the right
                           Expanded(
                             flex: 3,
                             child: Column(
@@ -282,6 +255,37 @@ class _ProductCardState extends State<ProductCard> {
                                       textAlign: TextAlign.end,
                                     ),
                                   ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      // Price and discount
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            flex: 2,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                if (widget.product.discountPrice != null)
+                                  Text(
+                                    '${widget.product.price.toStringAsFixed(2)} ريال',
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      decoration: TextDecoration.lineThrough,
+                                      color: Colors.grey[600],
+                                      fontSize: isSmallScreen ? 9 : 11,
+                                    ),
+                                  ),
+                                Text(
+                                  '${(widget.product.discountPrice ?? widget.product.price).toStringAsFixed(2)} ريال',
+                                  style: theme.textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: theme.primaryColor,
+                                    fontSize: priceFontSize,
+                                  ),
+                                ),
                               ],
                             ),
                           ),

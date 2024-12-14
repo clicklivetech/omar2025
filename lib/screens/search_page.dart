@@ -17,7 +17,7 @@ class _SearchPageState extends State<SearchPage> {
   List<Map<String, dynamic>> _searchResults = [];
   bool _isLoading = false;
   Timer? _debounceTimer;
-  Map<String, bool> _favoriteStatus = {};
+  final Map<String, bool> _favoriteStatus = {};
   int _cartItemsCount = 0;
 
   @override

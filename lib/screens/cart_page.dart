@@ -193,10 +193,10 @@ class _CartPageState extends State<CartPage> with WidgetsBindingObserver, RouteA
                 ),
               ],
             ),
-            child: Row(
+            child: const Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Expanded(
+                Expanded(
                   child: Text(
                     'سلة المشتريات',
                     style: TextStyle(
