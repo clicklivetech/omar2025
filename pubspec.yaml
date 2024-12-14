@@ -1,0 +1,41 @@
+name: omarmarket
+description: A new Flutter project.
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.1.5 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  supabase_flutter: ^1.10.25
+  cupertino_icons: ^1.0.2
+  shared_preferences: ^2.2.2
+  carousel_slider: ^5.0.0
+  cached_network_image: ^3.3.0
+  flutter_rating_bar: ^4.0.1
+  firebase_core: ^2.24.2
+  cloud_firestore: ^4.13.6
+  logging: ^1.2.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^2.0.0
+  flutter_launcher_icons: ^0.13.1
+
+flutter_icons:
+  android: true
+  ios: true
+  image_path: "assets/images/logo.png"
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "assets/images/logo.png"
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/
+    - assets/
