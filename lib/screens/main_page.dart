@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'home_page.dart';
 import 'favorites_page.dart';
 import 'cart_page.dart';
 import 'login_page.dart';
 import 'categories_page.dart';
+import 'home_page.dart';
 import '../services/supabase_service.dart';
 
 class MainPage extends StatefulWidget {
@@ -16,11 +16,11 @@ class MainPage extends StatefulWidget {
 class _MainPageState extends State<MainPage> {
   int _selectedIndex = 0;
   
-  final List<Widget> _pages = const [
-    HomePage(),
-    CategoriesPage(),
-    FavoritesPage(),
-    CartPage(),
+  final List<Widget> _pages = [
+    const HomePage(),
+    const CategoriesPage(),
+    const FavoritesPage(),
+    const CartPage(),
   ];
 
   void _onItemTapped(int index) {

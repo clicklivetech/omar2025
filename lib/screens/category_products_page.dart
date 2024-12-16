@@ -85,6 +85,19 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
     }
   }
 
+  Future<void> _updateCartCount() async {
+    try {
+      final cartItemsCount = await LocalStorageService.getCartItemsCount();
+      if (mounted) {
+        setState(() {
+          _cartItemsCount = cartItemsCount;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error updating cart count: $e');
+    }
+  }
+
   Future<void> _toggleFavorite(Product product) async {
     try {
       final isFavorite = _favoriteIds.contains(product.id);
@@ -115,13 +128,9 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
   Future<void> _addToCart(Product product) async {
     try {
       await LocalStorageService.addToCart(product, product.cartQuantity ?? 1);
-      await _loadData(); // Reload to update cart count
+      await _updateCartCount(); // Reload to update cart count
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('حدث خطأ أثناء إضافة المنتج إلى السلة')),
-        );
-      }
+      debugPrint('Error adding to cart: $e');
     }
   }
 
@@ -174,7 +183,7 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
                         IconButton(
                           icon: const Icon(Icons.shopping_cart, color: Colors.white),
                           onPressed: () => Navigator.pushNamed(context, '/cart_page')
-                              .then((_) => _loadData()),
+                              .then((_) => _updateCartCount()),
                         ),
                         if (_cartItemsCount > 0)
                           Positioned(
@@ -273,13 +282,13 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
                     : RefreshIndicator(
                         onRefresh: _loadData,
                         child: GridView.builder(
-                          padding: const EdgeInsets.all(8),
+                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
                           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                             crossAxisCount:
                                 MediaQuery.of(context).size.width < 600 ? 2 : 3,
                             childAspectRatio:
                                 MediaQuery.of(context).size.width < 360 ? 0.6 : 0.65,
-                            crossAxisSpacing: 8,
+                            crossAxisSpacing: 6,
                             mainAxisSpacing: 8,
                           ),
                           itemCount: _filteredProducts.length,

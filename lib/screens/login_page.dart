@@ -103,35 +103,43 @@ class _LoginPageState extends State<LoginPage> {
                                 password: _passwordController.text,
                               );
                               
+                              if (!mounted) return;
+
                               setState(() {
                                 _isLoading = false;
                               });
-
-                              if (!mounted) return;
                               
-                              if (success) {
-                                Navigator.of(currentContext).pushReplacement(
-                                  MaterialPageRoute(
-                                    builder: (_) => const HomeLayout(),
+                              if (success && mounted && currentContext.mounted) {
+                                // إذا كان هناك صفحة سابقة، نعود إليها مع نتيجة true
+                                if (Navigator.of(currentContext).canPop()) {
+                                  Navigator.of(currentContext).pop(true);
+                                } else {
+                                  // إذا لم تكن هناك صفحة سابقة، ننتقل إلى الصفحة الرئيسية
+                                  Navigator.of(currentContext).pushReplacement(
+                                    MaterialPageRoute(
+                                      builder: (_) => const HomeLayout(),
+                                    ),
+                                  );
+                                }
+                              }
+                            } catch (e) {
+                              if (!mounted) return;
+
+                              setState(() {
+                                _isLoading = false;
+                              });
+                              
+                              if (currentContext.mounted) {
+                                ScaffoldMessenger.of(currentContext).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      e.toString(),
+                                      textAlign: TextAlign.right,
+                                    ),
+                                    backgroundColor: Colors.red,
                                   ),
                                 );
                               }
-                            } catch (e) {
-                              setState(() {
-                                _isLoading = false;
-                              });
-
-                              if (!mounted) return;
-                              
-                              ScaffoldMessenger.of(currentContext).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                    e.toString(),
-                                    textAlign: TextAlign.right,
-                                  ),
-                                  backgroundColor: Colors.red,
-                                ),
-                              );
                             }
                           }
                         },

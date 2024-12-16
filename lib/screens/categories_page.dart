@@ -33,9 +33,7 @@ class _CategoriesPageState extends State<CategoriesPage> {
       final categoriesData = await SupabaseService.getCategories();
       if (mounted) {
         setState(() {
-          _categories = categoriesData
-              .map((data) => Category.fromJson(Map<String, dynamic>.from(data)))
-              .toList();
+          _categories = categoriesData;
           _isLoading = false;
         });
       }

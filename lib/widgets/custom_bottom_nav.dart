@@ -50,6 +50,11 @@ class CustomBottomNav extends StatelessWidget {
             activeIcon: Icon(Icons.category),
             label: 'الأقسام',
           ),
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.favorite_outline),
+            activeIcon: Icon(Icons.favorite),
+            label: 'المفضلة',
+          ),
           BottomNavigationBarItem(
             icon: Stack(
               children: [
@@ -110,11 +115,6 @@ class CustomBottomNav extends StatelessWidget {
               ],
             ),
             label: 'السلة',
-          ),
-          const BottomNavigationBarItem(
-            icon: Icon(Icons.favorite_outline),
-            activeIcon: Icon(Icons.favorite),
-            label: 'المفضلة',
           ),
           const BottomNavigationBarItem(
             icon: Icon(Icons.person_outline),

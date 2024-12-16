@@ -33,6 +33,10 @@ class _RegisterPageState extends State<RegisterPage> {
   Future<void> _handleRegister(BuildContext currentContext) async {
     if (!_formKey.currentState!.validate()) return;
     
+    // Store navigator before async operations
+    final navigator = Navigator.of(currentContext);
+    final scaffoldMessenger = ScaffoldMessenger.of(currentContext);
+    
     setState(() {
       _isLoading = true;
     });
@@ -52,7 +56,7 @@ class _RegisterPageState extends State<RegisterPage> {
       });
 
       if (success) {
-        Navigator.of(currentContext).pushReplacement(
+        navigator.pushReplacement(
           MaterialPageRoute(
             builder: (_) => const HomeLayout(),
           ),
@@ -65,7 +69,7 @@ class _RegisterPageState extends State<RegisterPage> {
         _isLoading = false;
       });
       
-      ScaffoldMessenger.of(currentContext).showSnackBar(
+      scaffoldMessenger.showSnackBar(
         SnackBar(
           content: Text(
             e.toString(),

@@ -9,17 +9,23 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  supabase_flutter: ^1.10.25
   flutter_localizations:
     sdk: flutter
-  supabase_flutter: ^1.10.25
+  provider: ^6.1.1
   cupertino_icons: ^1.0.2
+  image_picker: ^0.8.5
   shared_preferences: ^2.2.2
-  carousel_slider: ^5.0.0
+  flutter_carousel_widget: ^2.2.0
   cached_network_image: ^3.3.0
   flutter_rating_bar: ^4.0.1
   firebase_core: ^2.24.2
   cloud_firestore: ^4.13.6
   logging: ^1.2.0
+  flutter_cache_manager: ^3.3.1
+  url_launcher: ^6.2.2
+  font_awesome_flutter: ^10.6.0
+  path: ^1.8.3
 
 dev_dependencies:
   flutter_test:
@@ -38,4 +44,15 @@ flutter:
   uses-material-design: true
   assets:
     - assets/images/
+    - assets/images/offers/
     - assets/
+  fonts:
+    - family: Cairo
+      fonts:
+        - asset: assets/fonts/Cairo-Regular.ttf
+        - asset: assets/fonts/Cairo-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/Cairo-Light.ttf
+          weight: 300
+        - asset: assets/fonts/Cairo-Medium.ttf
+          weight: 500

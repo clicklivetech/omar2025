@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'home_page.dart';
 import 'login_page.dart';
 import 'profile_page.dart';
+import 'main_page.dart';
 
 class HomeLayout extends StatefulWidget {
   const HomeLayout({super.key});
@@ -13,7 +13,7 @@ class HomeLayout extends StatefulWidget {
 class _HomeLayoutState extends State<HomeLayout> {
   int _currentIndex = 0;
   final List<Widget> _screens = [
-    const HomePage(),
+    const MainPage(),
     const LoginPage(),
     const ProfilePage(),
   ];

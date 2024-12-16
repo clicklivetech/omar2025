@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/category.dart';
-import '../models/product.dart'; // Added import statement for Product model
 import '../models/favorite_item.dart'; // Import statement for FavoriteItem model
 import '../models/cart_item.dart'; // Import statement for CartItem model
+import '../services/auth_service.dart';
 
 class SupabaseService {
   static const String supabaseUrl = 'https://vvjgjuvcbqnrzbjkcloa.supabase.co';
   static const String supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ2amdqdXZjYnFucnpiamtjbG9hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzMxMjM0MjMsImV4cCI6MjA0ODY5OTQyM30.dAu01n_o4KOZ9L8W42U8Qd6XER4bH2SuXzwWZt09t7Q';
+  static late final SupabaseClient client;
 
   static Future<void> initialize() async {
     try {
@@ -16,6 +17,21 @@ class SupabaseService {
         url: supabaseUrl,
         anonKey: supabaseKey,
       );
+      client = Supabase.instance.client;
+
+      // إضافة مراقب لحالة تسجيل الدخول
+      client.auth.onAuthStateChange.listen((data) {
+        final AuthChangeEvent event = data.event;
+        final Session? session = data.session;
+
+        if (event == AuthChangeEvent.signedIn && session != null) {
+          // تحديث AuthService عند تسجيل الدخول
+          AuthService.saveToken(session.accessToken, session.user.id);
+        } else if (event == AuthChangeEvent.signedOut) {
+          // تحديث AuthService عند تسجيل الخروج
+          AuthService.logout();
+        }
+      });
       debugPrint('Supabase initialized successfully');
     } catch (e) {
       debugPrint('Error initializing Supabase: $e');
@@ -23,7 +39,7 @@ class SupabaseService {
     }
   }
 
-  static SupabaseClient get client => Supabase.instance.client;
+  static SupabaseClient get getClient => client;
 
   static Future<bool> signUp({
     required String email,
@@ -70,15 +86,28 @@ class SupabaseService {
         email: email,
         password: password,
       );
-      return response.session != null;
+      
+      if (response.session != null) {
+        // حفظ التوكن ومعرف المستخدم
+        await AuthService.saveToken(
+          response.session!.accessToken,
+          response.user!.id,
+        );
+        return true;
+      }
+      return false;
     } catch (e) {
       debugPrint('Error signing in: $e');
+      if (e.toString().contains('Invalid login credentials')) {
+        throw Exception('البريد الإلكتروني أو كلمة المرور غير صحيحة');
+      }
       rethrow;
     }
   }
 
   static Future<void> signOut() async {
     await client.auth.signOut();
+    await AuthService.logout();
   }
 
   static Future<void> createProfile({
@@ -132,7 +161,22 @@ class SupabaseService {
 
   static Future<List<Map<String, dynamic>>> getFeaturedProducts() async {
     try {
-      debugPrint('Fetching featured products from Supabase...');
+      final response = await client
+          .from('products')
+          .select()
+          .eq('is_featured', true)
+          .eq('is_active', true)
+          .order('created_at', ascending: false);
+      
+      return List<Map<String, dynamic>>.from(response);
+    } catch (e) {
+      debugPrint('Error fetching featured products: $e');
+      rethrow;
+    }
+  }
+
+  static Future<List<Map<String, dynamic>>> getFeaturedProductsOld() async {
+    try {
       final response = await client
           .from('products')
           .select('*, categories(*)')
@@ -140,10 +184,17 @@ class SupabaseService {
           .eq('is_active', true)
           .order('created_at');
       
-      debugPrint('Featured products response: $response');
-      return List<Map<String, dynamic>>.from(response as List);
-    } catch (e) {
+      if (response == null) {
+        debugPrint('Featured products response is null');
+        return [];
+      }
+
+      final products = List<Map<String, dynamic>>.from(response as List);
+      debugPrint('Successfully fetched ${products.length} featured products');
+      return products;
+    } catch (e, stackTrace) {
       debugPrint('Error fetching featured products: $e');
+      debugPrint('Stack trace: $stackTrace');
       return [];
     }
   }
@@ -172,31 +223,26 @@ class SupabaseService {
     }
   }
 
-  static Future<List<Product>> getProductsByCategoryId(int categoryId) async {
-    try {
-      final response = await client
-          .from('products')
-          .select()
-          .eq('category_id', categoryId)
-          .order('created_at', ascending: false);
-
-      return (response as List).map((product) => Product.fromJson(product)).toList();
-    } catch (e) {
-      debugPrint('Error getting products by category: $e');
-      rethrow;
-    }
-  }
-
-  static Future<List<Map<String, dynamic>>> getCategories() async {
+  static Future<List<Category>> getCategories() async {
     try {
       final response = await client
           .from('categories')
           .select()
-          .order('name');
-      return List<Map<String, dynamic>>.from(response);
-    } catch (e) {
+          .order('created_at');
+      
+      if (response == null) {
+        debugPrint('Categories response is null');
+        return [];
+      }
+
+      final List<Map<String, dynamic>> data = List<Map<String, dynamic>>.from(response);
+      final categories = data.map((json) => Category.fromJson(json)).toList();
+      debugPrint('Successfully fetched ${categories.length} categories');
+      return categories;
+    } catch (e, stackTrace) {
       debugPrint('Error fetching categories: $e');
-      rethrow;
+      debugPrint('Stack trace: $stackTrace');
+      return [];  // Return empty list instead of rethrowing
     }
   }
 
@@ -379,5 +425,28 @@ class SupabaseService {
 
   static Future<void> clearCart(String userId) async {
     await client.from('cart').delete().eq('user_id', userId);
+  }
+
+  static Future<List<Map<String, dynamic>>> getPromoSlides() async {
+    try {
+      final response = await client
+          .from('promo_slides')
+          .select()
+          .eq('is_active', true)
+          .order('created_at');
+
+      if (response == null) {
+        debugPrint('Promo slides response is null');
+        return [];
+      }
+
+      final slides = List<Map<String, dynamic>>.from(response as List);
+      debugPrint('Successfully fetched ${slides.length} promo slides');
+      return slides;
+    } catch (e, stackTrace) {
+      debugPrint('Error fetching promo slides: $e');
+      debugPrint('Stack trace: $stackTrace');
+      return [];
+    }
   }
 }

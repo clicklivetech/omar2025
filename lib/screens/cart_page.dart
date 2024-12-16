@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import '../models/cart_item.dart' as models;
 import '../services/local_storage_service.dart';
+import '../services/auth_service.dart';
+import 'delivery_address_page.dart';
 
 class CartPage extends StatefulWidget {
   const CartPage({super.key});
@@ -8,164 +11,330 @@ class CartPage extends StatefulWidget {
   State<CartPage> createState() => _CartPageState();
 }
 
-class _CartPageState extends State<CartPage> with WidgetsBindingObserver, RouteAware {
+class _CartPageState extends State<CartPage> with WidgetsBindingObserver {
   bool _isLoading = true;
-  List<dynamic> _cartItems = [];
+  List<models.CartItem> _cartItems = [];
   double _totalPrice = 0;
-  final RouteObserver<ModalRoute<void>> _routeObserver = RouteObserver<ModalRoute<void>>();
+  final double _deliveryFee = 10.0; // Fixed delivery fee
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _loadCart();
+    _checkLoginStatusAndLoadCart();
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _routeObserver.unsubscribe(this);
     super.dispose();
   }
 
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
-      _loadCart();
-    }
+  Future<void> _checkLoginStatusAndLoadCart() async {
+    await AuthService.checkLoginStatus(); // تحديث حالة تسجيل الدخول
+    await _loadCartItems();
   }
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _routeObserver.subscribe(this, ModalRoute.of(context)!);
-    _loadCart();
-  }
-
-  @override
-  void didPush() {
-    super.didPush();
-    _loadCart();
-  }
-
-  @override
-  void didPopNext() {
-    super.didPopNext();
-    _loadCart();
-  }
-
-  Future<void> _loadCart() async {
+  Future<void> _loadCartItems() async {
     try {
-      setState(() => _isLoading = true);
+      setState(() {
+        _isLoading = true;
+      });
+
+      final items = await LocalStorageService.getCart();
       
-      // Always load from local storage
-      final localCart = await LocalStorageService.getCart();
-      if (mounted) {
-        setState(() {
-          _cartItems = localCart;
-          _calculateTotal();
-        });
-      }
+      // Convert LocalCartItem to CartItem
+      final cartItems = items.map((item) => models.CartItem(
+        id: item.product.id.toString(),
+        userId: AuthService.currentUserId ?? '',
+        product: item.product,
+        quantity: item.quantity,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      )).toList();
+
+      if (!mounted) return;
+
+      setState(() {
+        _cartItems = cartItems;
+        _calculateTotal();
+        _isLoading = false;
+      });
     } catch (e) {
-      debugPrint('Error loading cart: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('حدث خطأ أثناء تحميل السلة')),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('حدث خطأ: $e')),
+      );
     }
   }
 
   void _calculateTotal() {
     double total = 0;
     for (var item in _cartItems) {
-      final price = item.product.discountPrice ?? item.product.price;
-      total += price * item.quantity;
+      total += item.totalPrice;
     }
     _totalPrice = total;
   }
 
-  Future<void> _updateQuantity(dynamic item, int newQuantity) async {
+  Future<void> _updateQuantity(models.CartItem item, int newQuantity) async {
     if (newQuantity < 1) return;
 
     try {
-      // Update local cart
       await LocalStorageService.updateCartItemQuantity(item.product.id, newQuantity);
-      _loadCart();
+      if (!mounted) return;
+      setState(() {
+        item.quantity = newQuantity;
+        _calculateTotal();
+      });
     } catch (e) {
-      debugPrint('Error updating quantity: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('حدث خطأ أثناء تحديث الكمية')),
-        );
-      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('حدث خطأ: $e')),
+      );
     }
   }
 
-  Future<void> _removeFromCart(dynamic item) async {
+  Future<void> _removeFromCart(models.CartItem item) async {
     try {
-      // Remove from local cart
       await LocalStorageService.removeFromCart(item.product.id);
-      _loadCart();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('تم إزالة المنتج من السلة')),
-        );
-      }
+      if (!mounted) return;
+      setState(() {
+        _cartItems.removeWhere((cartItem) => cartItem.product.id == item.product.id);
+        _calculateTotal();
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تم إزالة المنتج من السلة')),
+      );
     } catch (e) {
-      debugPrint('Error removing from cart: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('حدث خطأ أثناء إزالة المنتج من السلة')),
-        );
-      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('حدث خطأ: $e')),
+      );
     }
   }
 
-  Future<void> _showClearCartDialog(BuildContext context) async {
+  Future<void> _navigateToDeliveryAddress() async {
+    if (!mounted) return;
+
+    // التحقق من حالة تسجيل الدخول
+    if (AuthService.currentUserId == null) {
+      // عرض رسالة للمستخدم
+      final shouldLogin = await showDialog<bool>(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: const Text('تسجيل الدخول مطلوب'),
+            content: const Text('يجب تسجيل الدخول لإكمال عملية الشراء. هل تريد تسجيل الدخول الآن؟'),
+            actions: <Widget>[
+              TextButton(
+                child: const Text('إلغاء'),
+                onPressed: () {
+                  Navigator.of(context).pop(false);
+                },
+              ),
+              TextButton(
+                child: const Text('تسجيل الدخول'),
+                onPressed: () {
+                  Navigator.of(context).pop(true);
+                },
+              ),
+            ],
+          );
+        },
+      );
+
+      if (shouldLogin == true) {
+        if (!mounted) return;
+        
+        // الانتقال إلى صفحة تسجيل الدخول
+        final loginResult = await Navigator.pushNamed(context, '/login');
+        
+        // التحقق مرة أخرى بعد العودة من صفحة تسجيل الدخول
+        if (loginResult == true && mounted && AuthService.currentUserId != null) {
+          // المتابعة إلى صفحة العنوان بعد تسجيل الدخول بنجاح
+          await _continueToDeliveryAddress();
+        }
+      }
+      return;
+    }
+
+    // إذا كان المستخدم مسجل دخول، المتابعة مباشرة إلى صفحة العنوان
+    await _continueToDeliveryAddress();
+  }
+
+  Future<void> _continueToDeliveryAddress() async {
     if (!mounted) return;
     
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('مسح السلة'),
-        content: const Text('هل تريد مسح السلة؟'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('إلغاء'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('مسح'),
-          ),
-        ],
+    final result = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => DeliveryAddressPage(
+          cartItems: _cartItems,
+          subtotal: _totalPrice,
+          deliveryFee: _deliveryFee,
+        ),
       ),
     );
 
-    if (!mounted) return;
+    if (result == true && mounted) {
+      _loadCartItems();
+    }
+  }
 
-    if (confirm == true) {
-      try {
-        final currentContext = context;
-        await LocalStorageService.clearCart();
-        await _loadCart();
-        if (!mounted) return;
-        ScaffoldMessenger.of(currentContext).showSnackBar(
-          const SnackBar(content: Text('تم مسح السلة بنجاح')),
+  Future<void> _showClearCartDialog() async {
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    final bool? confirmed = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: const Text('تأكيد'),
+          content: const Text('هل أنت متأكد من رغبتك في مسح السلة؟'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('إلغاء'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('مسح السلة'),
+            ),
+          ],
         );
-      } catch (e) {
-        debugPrint('Error clearing cart: $e');
+      },
+    );
+
+    if (confirmed ?? false) {
+      try {
+        await LocalStorageService.clearCart();
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('حدث خطأ أثناء مسح السلة')),
+        setState(() {
+          _cartItems.clear();
+          _calculateTotal();
+        });
+      } catch (e) {
+        if (!mounted) return;
+        scaffoldMessenger.showSnackBar(
+          SnackBar(content: Text('حدث خطأ: $e')),
         );
       }
     }
+  }
+
+  Widget _buildCartItem(models.CartItem item, ThemeData theme) {
+    final price = item.product.price;
+    final totalItemPrice = price * item.quantity;
+
+    return Dismissible(
+      key: Key(item.product.id.toString()),
+      direction: DismissDirection.endToStart,
+      background: Container(
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 20),
+        decoration: BoxDecoration(
+          color: Colors.red[100],
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: const Icon(
+          Icons.delete_outline,
+          color: Colors.red,
+          size: 28,
+        ),
+      ),
+      onDismissed: (direction) {
+        _removeFromCart(item);
+      },
+      child: Card(
+        margin: const EdgeInsets.only(bottom: 12),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        elevation: 2,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.network(
+                  item.product.imageUrl ?? '',
+                  width: 80,
+                  height: 80,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) =>
+                      Container(
+                    width: 80,
+                    height: 80,
+                    color: Colors.grey[200],
+                    child: const Icon(
+                      Icons.image_not_supported,
+                      color: Colors.grey,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item.product.name,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '$price ₪',
+                      style: TextStyle(
+                        color: theme.primaryColor,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.remove_circle_outline),
+                          onPressed: () => _updateQuantity(
+                              item, item.quantity - 1),
+                          color: theme.primaryColor,
+                        ),
+                        Text(
+                          '${item.quantity}',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.add_circle_outline),
+                          onPressed: () => _updateQuantity(
+                              item, item.quantity + 1),
+                          color: theme.primaryColor,
+                        ),
+                        const Spacer(),
+                        Text(
+                          '$totalItemPrice ₪',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -173,238 +342,70 @@ class _CartPageState extends State<CartPage> with WidgetsBindingObserver, RouteA
     final theme = Theme.of(context);
     
     return Scaffold(
+      appBar: AppBar(
+        title: const Text('سلة التسوق'),
+        backgroundColor: Theme.of(context).primaryColor,
+        foregroundColor: Colors.white,
+        centerTitle: true,
+      ),
       body: Column(
         children: [
-          // Custom top bar
-          Container(
-            padding: EdgeInsets.only(
-              top: MediaQuery.of(context).padding.top + 8,
-              bottom: 8,
-              left: 16,
-              right: 16,
-            ),
-            decoration: BoxDecoration(
-              color: theme.primaryColor,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 4,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: const Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Expanded(
-                  child: Text(
-                    'سلة المشتريات',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          // Content
           Expanded(
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : _cartItems.isEmpty
-                    ? RefreshIndicator(
-                        onRefresh: _loadCart,
-                        child: Stack(
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            ListView(),
-                            Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons.shopping_cart_outlined,
-                                    size: 80,
-                                    color: Colors.grey[400],
-                                  ),
-                                  const SizedBox(height: 16),
-                                  Text(
-                                    'السلة فارغة',
-                                    style: TextStyle(
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.grey[600],
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    'لم تقم بإضافة أي منتجات إلى السلة بعد',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      color: Colors.grey[500],
-                                    ),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                  const SizedBox(height: 24),
-                                  ElevatedButton.icon(
-                                    onPressed: () => Navigator.pushNamed(context, '/'),
-                                    icon: const Icon(Icons.shopping_bag_outlined),
-                                    label: const Text('تسوق الآن'),
-                                    style: ElevatedButton.styleFrom(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 32,
-                                        vertical: 12,
-                                      ),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                    ),
-                                  ),
-                                ],
+                            Icon(
+                              Icons.shopping_cart_outlined,
+                              size: 64,
+                              color: Colors.grey[400],
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              'السلة فارغة',
+                              style: TextStyle(
+                                fontSize: 18,
+                                color: Colors.grey[600],
                               ),
+                            ),
+                            const SizedBox(height: 8),
+                            ElevatedButton(
+                              onPressed: () {
+                                Navigator.pushReplacementNamed(context, '/');
+                              },
+                              child: const Text('تسوق الآن'),
                             ),
                           ],
                         ),
                       )
-                    : Column(
-                        children: [
-                          Expanded(
-                            child: ListView.builder(
-                              padding: const EdgeInsets.all(16),
-                              itemCount: _cartItems.length,
-                              itemBuilder: (context, index) {
+                    : CustomScrollView(
+                        slivers: [
+                          SliverList(
+                            delegate: SliverChildBuilderDelegate(
+                              (context, index) {
                                 final item = _cartItems[index];
-                                final price = item.product.discountPrice ?? item.product.price;
-                                final totalItemPrice = price * item.quantity;
-
-                                return Dismissible(
-                                  key: Key(item.product.id.toString()),
-                                  direction: DismissDirection.endToStart,
-                                  background: Container(
-                                    alignment: Alignment.centerRight,
-                                    padding: const EdgeInsets.only(right: 20),
-                                    decoration: BoxDecoration(
-                                      color: Colors.red[100],
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: const Icon(
-                                      Icons.delete_outline,
-                                      color: Colors.red,
-                                      size: 28,
-                                    ),
+                                return GestureDetector(
+                                  onTap: () => Navigator.pushNamed(
+                                    context,
+                                    '/product-details',
+                                    arguments: item.product,
                                   ),
-                                  onDismissed: (direction) {
-                                    _removeFromCart(item);
-                                  },
-                                  child: Card(
-                                    margin: const EdgeInsets.only(bottom: 12),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    elevation: 2,
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(12),
-                                      child: Row(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          ClipRRect(
-                                            borderRadius: BorderRadius.circular(8),
-                                            child: Image.network(
-                                              item.product.imageUrl ?? '',
-                                              width: 80,
-                                              height: 80,
-                                              fit: BoxFit.cover,
-                                              errorBuilder: (context, error, stackTrace) =>
-                                                  Container(
-                                                width: 80,
-                                                height: 80,
-                                                color: Colors.grey[200],
-                                                child: const Icon(
-                                                  Icons.image_not_supported,
-                                                  color: Colors.grey,
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                          const SizedBox(width: 12),
-                                          Expanded(
-                                            child: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
-                                              children: [
-                                                Text(
-                                                  item.product.name ?? '',
-                                                  style: const TextStyle(
-                                                    fontWeight: FontWeight.bold,
-                                                    fontSize: 16,
-                                                  ),
-                                                ),
-                                                const SizedBox(height: 4),
-                                                Text(
-                                                  '${price.toStringAsFixed(2)} ج.م',
-                                                  style: TextStyle(
-                                                    color: theme.primaryColor,
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                                ),
-                                                const SizedBox(height: 8),
-                                                Row(
-                                                  children: [
-                                                    IconButton(
-                                                      icon: const Icon(Icons.remove_circle_outline),
-                                                      onPressed: () => _updateQuantity(
-                                                          item, item.quantity - 1),
-                                                      color: theme.primaryColor,
-                                                    ),
-                                                    Text(
-                                                      '${item.quantity}',
-                                                      style: const TextStyle(
-                                                        fontSize: 16,
-                                                        fontWeight: FontWeight.bold,
-                                                      ),
-                                                    ),
-                                                    IconButton(
-                                                      icon: const Icon(Icons.add_circle_outline),
-                                                      onPressed: () => _updateQuantity(
-                                                          item, item.quantity + 1),
-                                                      color: theme.primaryColor,
-                                                    ),
-                                                    const Spacer(),
-                                                    Text(
-                                                      '${totalItemPrice.toStringAsFixed(2)} ج.م',
-                                                      style: const TextStyle(
-                                                        fontWeight: FontWeight.bold,
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
+                                  child: _buildCartItem(item, theme),
                                 );
                               },
+                              childCount: _cartItems.length,
                             ),
                           ),
-                          if (_cartItems.isNotEmpty)
-                            Container(
+                          SliverToBoxAdapter(
+                            child: Padding(
                               padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.05),
-                                    blurRadius: 10,
-                                    offset: const Offset(0, -5),
-                                  ),
-                                ],
-                              ),
                               child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
                                 children: [
+                                  const Divider(height: 32),
                                   Row(
                                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                     children: [
@@ -416,7 +417,7 @@ class _CartPageState extends State<CartPage> with WidgetsBindingObserver, RouteA
                                         ),
                                       ),
                                       Text(
-                                        '${_totalPrice.toStringAsFixed(2)} ج.م',
+                                        '${_totalPrice.toStringAsFixed(2)} ₪',
                                         style: TextStyle(
                                           fontSize: 20,
                                           fontWeight: FontWeight.bold,
@@ -426,35 +427,31 @@ class _CartPageState extends State<CartPage> with WidgetsBindingObserver, RouteA
                                     ],
                                   ),
                                   const SizedBox(height: 16),
-                                  SizedBox(
-                                    width: double.infinity,
-                                    child: ElevatedButton(
-                                      onPressed: () {
-                                        // Handle checkout
-                                      },
-                                      style: ElevatedButton.styleFrom(
-                                        padding: const EdgeInsets.symmetric(vertical: 16),
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(12),
-                                        ),
+                                  ElevatedButton(
+                                    onPressed: _cartItems.isEmpty ? null : _navigateToDeliveryAddress,
+                                    style: ElevatedButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(vertical: 16),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
                                       ),
-                                      child: const Text(
-                                        'إتمام الشراء',
-                                        style: TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold,
-                                        ),
+                                    ),
+                                    child: const Text(
+                                      'متابعة الشراء',
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
                                       ),
                                     ),
                                   ),
                                   if (_cartItems.length > 1)
                                     TextButton(
-                                      onPressed: () => _showClearCartDialog(context),
+                                      onPressed: _showClearCartDialog,
                                       child: const Text('مسح السلة'),
                                     ),
                                 ],
                               ),
                             ),
+                          ),
                         ],
                       ),
           ),

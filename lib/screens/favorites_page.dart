@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../models/product.dart';
 import '../services/local_storage_service.dart';
@@ -10,23 +11,33 @@ class FavoritesPage extends StatefulWidget {
   State<FavoritesPage> createState() => _FavoritesPageState();
 }
 
-class _FavoritesPageState extends State<FavoritesPage>
-    with WidgetsBindingObserver, RouteAware {
-  bool _isLoading = true;
+class _FavoritesPageState extends State<FavoritesPage> with WidgetsBindingObserver, RouteAware {
   List<Product> _favorites = [];
+  bool _isLoading = true;
   final _routeObserver = RouteObserver<PageRoute>();
+  final StreamController<List<Product>> _favoritesController =
+      StreamController<List<Product>>.broadcast();
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _loadData();
+    LocalStorageService.favoritesStream.listen((favorites) {
+      if (mounted) {
+        _favoritesController.add(favorites);
+        setState(() {
+          _favorites = favorites;
+        });
+      }
+    });
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _routeObserver.unsubscribe(this);
+    _favoritesController.close();
     super.dispose();
   }
 
@@ -49,101 +60,69 @@ class _FavoritesPageState extends State<FavoritesPage>
   }
 
   Future<void> _loadData() async {
-    _loadFavorites();
+    if (!mounted) return;
+    await _loadFavorites();
   }
 
   Future<void> _loadFavorites() async {
+    if (!mounted) return;
+    
     try {
       final favorites = await LocalStorageService.getFavorites();
-      if (mounted) {
-        setState(() {
-          _favorites = favorites;
-          _isLoading = false;
-        });
-      }
+      if (!mounted) return;
+      
+      setState(() {
+        _favorites = favorites;
+        _isLoading = false;
+      });
     } catch (e) {
-      if (mounted) {
-        setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('حدث خطأ أثناء تحميل المفضلة')),
-        );
-      }
+      if (!mounted) return;
+      
+      setState(() => _isLoading = false);
+      if (!mounted) return;
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('حدث خطأ أثناء تحميل المفضلة')),
+      );
     }
   }
 
   Future<void> _removeFavorite(Product product) async {
+    if (!mounted) return;
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    
     try {
       await LocalStorageService.removeFromFavorites(product.id);
-      if (mounted) {
-        setState(() {
-          _favorites.removeWhere((p) => p.id == product.id);
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('تم إزالة المنتج من المفضلة')),
-        );
-      }
+      if (!mounted) return;
+      
+      setState(() {
+        _favorites.removeWhere((p) => p.id == product.id);
+      });
+      
+      scaffoldMessenger.showSnackBar(
+        const SnackBar(content: Text('تم إزالة المنتج من المفضلة')),
+      );
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('حدث خطأ أثناء إزالة المنتج من المفضلة')),
-        );
-      }
+      scaffoldMessenger.showSnackBar(
+        const SnackBar(content: Text('حدث خطأ أثناء إزالة المنتج من المفضلة')),
+      );
     }
   }
 
   Future<void> _addToCart(Product product) async {
+    if (!mounted) return;
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    
     try {
       await LocalStorageService.addToCart(product, product.cartQuantity ?? 1);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('تم إضافة المنتج إلى السلة')),
-        );
-      }
+      
+      scaffoldMessenger.showSnackBar(
+        const SnackBar(content: Text('تم إضافة المنتج إلى السلة')),
+      );
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('حدث خطأ أثناء إضافة المنتج إلى السلة')),
-        );
-      }
-    }
-  }
-
-  Future<void> _showClearFavoritesDialog(BuildContext context) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('مسح المفضلة'),
-        content: const Text('هل أنت متأكد من مسح جميع المنتجات من المفضلة؟'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('إلغاء'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('مسح'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed == true && mounted) {
-      try {
-        await LocalStorageService.clearFavorites();
-        if (!mounted) return;
-        setState(() {
-          _favorites.clear();
-        });
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('تم مسح المفضلة')),
-        );
-      } catch (e) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('حدث خطأ أثناء مسح المفضلة')),
-        );
-      }
+      scaffoldMessenger.showSnackBar(
+        const SnackBar(content: Text('حدث خطأ أثناء إضافة المنتج إلى السلة')),
+      );
     }
   }
 
@@ -153,112 +132,100 @@ class _FavoritesPageState extends State<FavoritesPage>
       appBar: AppBar(
         backgroundColor: Theme.of(context).primaryColor,
         elevation: 0,
-        title: const Text('المفضلة'),
+        centerTitle: true,
+        automaticallyImplyLeading: false,
+        title: const Text(
+          'المفضلة',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         actions: [
           if (_favorites.isNotEmpty)
             IconButton(
               icon: const Icon(Icons.delete_outline),
               color: Colors.white,
-              onPressed: () => _showClearFavoritesDialog(context),
+              onPressed: _showClearFavoritesDialog,
             ),
         ],
       ),
-      body: Column(
-        children: [
-          // Content
-          Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : _favorites.isEmpty
-                    ? RefreshIndicator(
-                        onRefresh: _loadFavorites,
-                        child: Stack(
-                          children: [
-                            ListView(),
-                            Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons.favorite_border,
-                                    size: 80,
-                                    color: Colors.grey[400],
-                                  ),
-                                  const SizedBox(height: 16),
-                                  Text(
-                                    'لا توجد منتجات في المفضلة',
-                                    style: TextStyle(
-                                      fontSize: 18,
-                                      color: Colors.grey[600],
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    'يمكنك إضافة المنتجات للمفضلة\nمن خلال الضغط على أيقونة القلب',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      color: Colors.grey[500],
-                                    ),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                  const SizedBox(height: 24),
-                                  ElevatedButton(
-                                    onPressed: () =>
-                                        Navigator.pushNamed(context, '/'),
-                                    style: ElevatedButton.styleFrom(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 32,
-                                        vertical: 12,
-                                      ),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                    ),
-                                    child: const Text('تصفح المنتجات'),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      )
-                    : RefreshIndicator(
-                        onRefresh: _loadFavorites,
-                        child: GridView.builder(
-                          padding: const EdgeInsets.all(16),
-                          gridDelegate:
-                              SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount:
-                                MediaQuery.of(context).size.width < 600 ? 2 : 3,
-                            childAspectRatio:
-                                MediaQuery.of(context).size.width < 360
-                                    ? 0.6
-                                    : 0.65,
-                            crossAxisSpacing: 16,
-                            mainAxisSpacing: 16,
-                          ),
-                          itemCount: _favorites.length,
-                          itemBuilder: (context, index) {
-                            final product = _favorites[index];
-                            return ProductCard(
-                              product: product,
-                              isFavorite: true,
-                              onFavoritePressed: () {
-                                _removeFavorite(product);
-                              },
-                              onAddToCartPressed: () {
-                                _addToCart(product);
-                              },
-                              onQuantityChanged: (quantity) {
-                                product.cartQuantity = quantity;
-                              },
-                            );
-                          },
-                        ),
-                      ),
-          ),
-        ],
+      body: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: _isLoading
+            ? const Center(
+                child: CircularProgressIndicator(),
+              )
+            : _favorites.isEmpty
+                ? const Center(
+                    child: Text(
+                      'لا توجد منتجات في المفضلة',
+                      style: TextStyle(fontSize: 16),
+                    ),
+                  )
+                : GridView.builder(
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      childAspectRatio: 0.7,
+                      crossAxisSpacing: 8,
+                      mainAxisSpacing: 8,
+                    ),
+                    itemCount: _favorites.length,
+                    itemBuilder: (context, index) {
+                      final product = _favorites[index];
+                      return ProductCard(
+                        product: product,
+                        isFavorite: true,
+                        onFavoritePressed: () => _removeFavorite(product),
+                        onAddToCartPressed: () => _addToCart(product),
+                      );
+                    },
+                  ),
       ),
     );
+  }
+
+  Future<void> _showClearFavoritesDialog() async {
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    
+    final bool? shouldClear = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('تأكيد المسح'),
+          content: const Text('هل أنت متأكد من مسح قائمة المفضلة؟'),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('إلغاء'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('موافق'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldClear == true) {
+      try {
+        await LocalStorageService.clearFavorites();
+        if (!mounted) return;
+        
+        setState(() {
+          _favorites.clear();
+        });
+        
+        scaffoldMessenger.showSnackBar(
+          const SnackBar(content: Text('تم مسح المفضلة')),
+        );
+      } catch (e) {
+        scaffoldMessenger.showSnackBar(
+          const SnackBar(content: Text('حدث خطأ أثناء مسح المفضلة')),
+        );
+      }
+    }
   }
 }

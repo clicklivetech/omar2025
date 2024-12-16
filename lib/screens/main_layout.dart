@@ -2,10 +2,11 @@ import 'package:flutter/material.dart';
 import '../widgets/custom_bottom_nav.dart';
 import 'categories_page.dart';
 import 'cart_page.dart';
-import 'home_page.dart';
 import 'favorites_page.dart';
 import 'profile_page.dart';
+import 'home_page.dart';
 import '../services/local_storage_service.dart';
+import 'dart:async';
 
 class MainLayout extends StatefulWidget {
   const MainLayout({Key? key}) : super(key: key);
@@ -17,12 +18,13 @@ class MainLayout extends StatefulWidget {
 class _MainLayoutState extends State<MainLayout> {
   int _currentIndex = 0;
   int _cartItemCount = 0;
+  StreamSubscription? _cartSubscription;
   
   final List<Widget> _pages = [
     const HomePage(),
     const CategoriesPage(),
-    const CartPage(),
     const FavoritesPage(),
+    const CartPage(),
     const ProfilePage(),
   ];
 
@@ -30,6 +32,7 @@ class _MainLayoutState extends State<MainLayout> {
   void initState() {
     super.initState();
     _loadCartItemCount();
+    _setupCartListener();
   }
 
   Future<void> _loadCartItemCount() async {
@@ -41,6 +44,16 @@ class _MainLayoutState extends State<MainLayout> {
     }
   }
 
+  void _setupCartListener() {
+    _cartSubscription = LocalStorageService.cartStream.listen((cart) {
+      if (mounted) {
+        setState(() {
+          _cartItemCount = cart.fold(0, (sum, item) => sum + item.quantity);
+        });
+      }
+    });
+  }
+
   void _onTabTapped(int index) {
     setState(() {
       _currentIndex = index;
@@ -48,23 +61,26 @@ class _MainLayoutState extends State<MainLayout> {
   }
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _loadCartItemCount();
-  }
-
-  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: IndexedStack(
-        index: _currentIndex,
-        children: _pages,
-      ),
+      body: _pages[_currentIndex],
       bottomNavigationBar: CustomBottomNav(
         currentIndex: _currentIndex,
         onTap: _onTabTapped,
         cartItemCount: _cartItemCount,
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _cartSubscription?.cancel();
+    super.dispose();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _loadCartItemCount();
   }
 }

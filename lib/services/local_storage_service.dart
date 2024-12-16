@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:async';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/product.dart';
 import '../models/local_cart_item.dart';
@@ -7,6 +8,14 @@ class LocalStorageService {
   static const String _favoritesKey = 'favorites';
   static const String _cartKey = 'local_cart';
   static SharedPreferences? _prefs;
+
+  // Add StreamController for favorites
+  static final _favoritesStreamController = StreamController<List<Product>>.broadcast();
+  static Stream<List<Product>> get favoritesStream => _favoritesStreamController.stream;
+
+  // Add StreamController for cart
+  static final _cartStreamController = StreamController<List<LocalCartItem>>.broadcast();
+  static Stream<List<LocalCartItem>> get cartStream => _cartStreamController.stream;
 
   static Future<void> init() async {
     _prefs = await SharedPreferences.getInstance();
@@ -37,8 +46,9 @@ class LocalStorageService {
       cart.add(LocalCartItem(product: product, quantity: quantity));
     }
     
-    final String cartJson = json.encode(cart.map((item) => item.toJson()).toList());
-    await _prefs?.setString(_cartKey, cartJson);
+    await _saveCart(cart);
+    // Notify listeners about the change
+    _cartStreamController.add(cart);
   }
 
   static Future<void> updateCartItemQuantity(String productId, int quantity) async {
@@ -49,8 +59,9 @@ class LocalStorageService {
     
     if (itemIndex != -1) {
       cart[itemIndex].quantity = quantity;
-      final String cartJson = json.encode(cart.map((item) => item.toJson()).toList());
-      await _prefs?.setString(_cartKey, cartJson);
+      await _saveCart(cart);
+      // Notify listeners about the change
+      _cartStreamController.add(cart);
     }
   }
 
@@ -59,14 +70,16 @@ class LocalStorageService {
     
     final List<LocalCartItem> cart = await getCart();
     cart.removeWhere((item) => item.product.id == productId);
-    final String cartJson = json.encode(cart.map((item) => item.toJson()).toList());
-    await _prefs?.setString(_cartKey, cartJson);
+    await _saveCart(cart);
+    // Notify listeners about the change
+    _cartStreamController.add(cart);
   }
 
   static Future<void> clearCart() async {
     if (_prefs == null) await init();
-    
     await _prefs?.remove(_cartKey);
+    // Notify listeners about the change
+    _cartStreamController.add([]);
   }
 
   // Get cart items count
@@ -88,6 +101,18 @@ class LocalStorageService {
     return favoritesList.map((json) => Product.fromJson(json)).toList();
   }
 
+  // Get just the IDs of favorite products
+  static Future<List<String>> getFavoriteIds() async {
+    final favorites = await getFavorites();
+    return favorites.map((product) => product.id).toList();
+  }
+
+  // Get favorites count
+  static Future<int> getFavoritesCount() async {
+    final favorites = await getFavorites();
+    return favorites.length;
+  }
+
   // Add product to favorites
   static Future<void> addToFavorites(Product product) async {
     if (_prefs == null) await init();
@@ -96,6 +121,8 @@ class LocalStorageService {
     if (!favorites.any((p) => p.id == product.id)) {
       favorites.add(product);
       await _saveFavorites(favorites);
+      // Notify listeners about the change
+      _favoritesStreamController.add(favorites);
     }
   }
 
@@ -106,6 +133,8 @@ class LocalStorageService {
     final List<Product> favorites = await getFavorites();
     favorites.removeWhere((p) => p.id == productId);
     await _saveFavorites(favorites);
+    // Notify listeners about the change
+    _favoritesStreamController.add(favorites);
   }
 
   // Check if a product is in favorites
@@ -126,9 +155,19 @@ class LocalStorageService {
     await _prefs?.setString(_favoritesKey, favoritesJson);
   }
 
+  // Save cart list to SharedPreferences
+  static Future<void> _saveCart(List<LocalCartItem> cart) async {
+    if (_prefs == null) await init();
+    
+    final String cartJson = json.encode(cart.map((item) => item.toJson()).toList());
+    await _prefs?.setString(_cartKey, cartJson);
+  }
+
   // Clear favorites
   static Future<void> clearFavorites() async {
     if (_prefs == null) await init();
     await _prefs?.remove(_favoritesKey);
+    // Notify listeners about the change
+    _favoritesStreamController.add([]);
   }
 }
