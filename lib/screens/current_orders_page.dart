@@ -50,10 +50,10 @@ class _CurrentOrdersPageState extends State<CurrentOrdersPage> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('حدث خطأ في تحميل الطلبات'),
+          const SnackBar(
+            content: Text('حدث خطأ في تحميل الطلبات'),
             backgroundColor: Colors.red,
-            duration: const Duration(seconds: 3),
+            duration: Duration(seconds: 3),
           ),
         );
       }

@@ -246,9 +246,7 @@ class _DeliveryAddressPageState extends State<DeliveryAddressPage> {
                                     if (!mounted) return;
                                     setState(() {
                                       addresses.insert(currentIndex, currentAddress);
-                                      if (selectedAddressId == null) {
-                                        selectedAddressId = currentAddress.id;
-                                      }
+                                      selectedAddressId ??= currentAddress.id;
                                     });
                                     scaffoldMessenger.showSnackBar(
                                       const SnackBar(content: Text('فشل حذف العنوان')),

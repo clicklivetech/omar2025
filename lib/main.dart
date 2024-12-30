@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 import 'services/supabase_service.dart';
@@ -15,6 +16,23 @@ import 'models/category.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Set iOS-style system UI overlays
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      statusBarBrightness: Brightness.light,
+      statusBarIconBrightness: Brightness.dark,
+      systemNavigationBarColor: Colors.white,
+      systemNavigationBarIconBrightness: Brightness.dark,
+      statusBarColor: Colors.transparent,
+    ),
+  );
+
+  // Set preferred orientations
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+  ]);
+  
   await SupabaseService.initialize();
   await LocalStorageService.init();
   runApp(
@@ -36,9 +54,28 @@ class MyApp extends StatelessWidget {
       title: 'عمر ماركت',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
+        platform: TargetPlatform.iOS,
         primarySwatch: Colors.orange,
         scaffoldBackgroundColor: Colors.grey[50],
         fontFamily: 'Cairo',
+        appBarTheme: const AppBarTheme(
+          systemOverlayStyle: SystemUiOverlayStyle(
+            statusBarBrightness: Brightness.light,
+            statusBarIconBrightness: Brightness.dark,
+            systemNavigationBarColor: Colors.white,
+            systemNavigationBarIconBrightness: Brightness.dark,
+            statusBarColor: Colors.transparent,
+          ),
+          backgroundColor: Colors.white,
+          elevation: 0,
+          iconTheme: IconThemeData(color: Colors.black),
+          titleTextStyle: TextStyle(
+            color: Colors.black,
+            fontSize: 17,
+            fontWeight: FontWeight.w600,
+            fontFamily: 'Cairo',
+          ),
+        ),
         textTheme: TextTheme(
           bodyLarge: TextStyle(fontFamily: 'Cairo', fontSize: 16 * fontScale),
           bodyMedium: TextStyle(fontFamily: 'Cairo', fontSize: 14 * fontScale),
