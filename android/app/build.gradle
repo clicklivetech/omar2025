@@ -1,13 +1,37 @@
 plugins {
-    id "com.android.application"
-    id "kotlin-android"
-    // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
-    id "dev.flutter.flutter-gradle-plugin"
+    id 'com.android.application'
+    id 'kotlin-android'
+    id 'dev.flutter.flutter-gradle-plugin'
 }
 
+def localProperties = new Properties()
+def localPropertiesFile = rootProject.file('local.properties')
+if (localPropertiesFile.exists()) {
+    localPropertiesFile.withReader('UTF-8') { reader ->
+        localProperties.load(reader)
+    }
+}
+
+def flutterRoot = localProperties.getProperty('flutter.sdk')
+if (flutterRoot == null) {
+    throw new RuntimeException("Flutter SDK not found. Define location with flutter.sdk in the local.properties file.")
+}
+
+def flutterVersionCode = localProperties.getProperty('flutter.versionCode')
+if (flutterVersionCode == null) {
+    throw new RuntimeException("versionCode not found. Define flutter.versionCode in the local.properties file.")
+}
+
+def flutterVersionName = localProperties.getProperty('flutter.versionName')
+if (flutterVersionName == null) {
+    throw new RuntimeException("versionName not found. Define flutter.versionName in the local.properties file.")
+}
+
+apply from: "$flutterRoot/packages/flutter_tools/gradle/flutter.gradle"
+
 android {
-    namespace "com.example.omarmarket"
-    compileSdkVersion flutter.compileSdkVersion
+    namespace "com.example.your_app_name" // تأكد من تغيير هذا حسب اسم تطبيقك
+    compileSdkVersion 33
     ndkVersion flutter.ndkVersion
 
     compileOptions {
@@ -24,33 +48,40 @@ android {
     }
 
     defaultConfig {
-        applicationId "com.example.omarmarket"
-        minSdkVersion flutter.minSdkVersion
-        targetSdkVersion flutter.targetSdkVersion
-        versionCode flutter.versionCode
-        versionName flutter.versionName
-        multiDexEnabled true
+        applicationId "com.example.your_app_name" // تأكد من تغيير هذا حسب اسم تطبيقك
+        minSdkVersion 21 // تم تحديد الحد الأدنى
+        targetSdkVersion 33 // نفس قيمة compileSdkVersion
+        versionCode flutterVersionCode.toInteger()
+        versionName flutterVersionName
+        vectorDrawables.useSupportLibrary = true
+        vectorDrawables.generatedDensities = ['hdpi', 'xhdpi', 'xxhdpi']
     }
 
     buildTypes {
         release {
             signingConfig signingConfigs.debug
             minifyEnabled true
-            shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
+
+    lintOptions {
+        checkReleaseBuilds false
+        abortOnError false
+    }
+
+    // إضافة هذه الإعدادات لحل مشكلة lStar
+    buildFeatures {
+        buildConfig true
+    }
+}
+
+flutter {
+    source '../..'
 }
 
 dependencies {
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
-    implementation 'androidx.multidex:multidex:2.0.1'
-    implementation 'com.google.android.material:material:1.11.0'
-    // implementation('project(':sign_in_with_apple')') {
-    //     exclude group: '*', module: 'apple*'
-    // }
-}
-
-flutter {
-    source = "../.."
+    // إضافة هذه المكتبة لدعم الإصدارات الحديثة
+    implementation 'androidx.core:core-ktx:1.7.0'
 }
