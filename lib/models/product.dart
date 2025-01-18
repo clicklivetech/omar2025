@@ -1,21 +1,54 @@
 import 'package:flutter/foundation.dart';
+import 'package:hive/hive.dart';
 
+part 'product.g.dart';
+
+@HiveType(typeId: 0)
 class Product {
+  @HiveField(0)
   final String id;
+  
+  @HiveField(1)
   final String name;
+  
+  @HiveField(2)
   final String? description;
+  
+  @HiveField(3)
   final double price;
+  
+  @HiveField(4)
   final double? discountPrice;
+  
+  @HiveField(5)
   final String categoryId;
+  
+  @HiveField(6)
   final int stockQuantity;
+  
+  @HiveField(7)
   final String? imageUrl;
+  
+  @HiveField(8)
   final bool isFeatured;
+  
+  @HiveField(9)
   final bool isActive;
+  
+  @HiveField(10)
   final DateTime createdAt;
+  
+  @HiveField(11)
   final DateTime updatedAt;
+  
+  @HiveField(12)
   final String? unit;
+  
+  @HiveField(13)
   final Map<String, dynamic>? category;
-  int? cartQuantity; // Added for cart functionality
+  
+  @HiveField(14)
+  int? cartQuantity;
 
   Product({
     required this.id,
